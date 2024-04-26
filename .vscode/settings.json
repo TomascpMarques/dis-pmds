@@ -1,0 +1,14 @@
+{
+    "cSpell.words": [
+        "DISPMD"
+    ],
+    "files.associations": {
+        "*.go": "go",
+        "*.graphqls": "graphql",
+        "*.svelte": "svelte",
+        "*.scala": "scala",
+        "*.zig": "zig",
+        "optional": "cpp"
+    },
+    "cmake.sourceDirectory": "/home/tomasmarques/Workspace/PlatformIO/projects/S3 tests/.pio/libdeps/esp32-s3-devkitm-1/Unity"
+}
