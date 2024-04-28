@@ -7,6 +7,7 @@ char *RandomCharSequenceLen32()
 
     for (int i = 0; i < 33; ++i)
     {
+        randomSeed(random(1340, 9999999));
         long choice = random(1, 5);
 
         if (choice <= 3)
@@ -54,6 +55,7 @@ char *RandomCharSequenceLen8()
 
     for (int i = 0; i < 8; ++i)
     {
+        randomSeed(random(1340, 9999999));
         long choice = random(1, 5);
 
         if (choice <= 3)
