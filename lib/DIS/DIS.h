@@ -29,18 +29,17 @@ enum DeviceRoutingModes
 // informs, seguido de, receives, e finalizando transmits.
 typedef uint8_t DeviceRoutingMode;
 
-DeviceRoutingModes *GetModesFromMask(DeviceRoutingMode *mask);
-
 class DeviceIdentifier
 {
 private:
     // 16 byte - 128 bit AES key
     byte aesKey[16];
     byte aesSSID[16];
+    char *apPassword;
     AES128_ESP *aes128;
 
-    char device_id[8 + 1];
-    char patient_id[8 + 1];
+    String device_id;
+    String patient_id;
     char device_prefix[3 + 1];
 
     DeviceOperationStates device_state;
@@ -54,7 +53,7 @@ public:
 
     DeviceIdentifier(
         char device_type[3 + 1],
-        char patient_id[8 + 1],
+        String patient_id,
         DeviceOperationStates operation_state = DeviceOperationStates::good,
         DeviceRoutingMode routing_modes = 0b000);
 
@@ -63,6 +62,8 @@ public:
     ------------------------ */
     const char *GetDeviceID() const;
     const char *GetPatientID() const;
+    const char *GetDeviceState() const;
+    const char *GetRoutingMode() const;
     const char *GetDevicePrefix() const;
     const char *GetSSIDAES() const;
 
@@ -71,6 +72,7 @@ public:
     ------------------------ */
     void SetAESKey(const byte key[16]);
     void SetAESInstance(AES128_ESP *aes128);
+    void SetApPassword(char *password);
 
     /* ----------------------
     Behavior
@@ -78,5 +80,5 @@ public:
     const char *GenerateAESSSID();
     const char *DecryptSomeSSID(const byte cypher[16]);
 
-    void InitWifi(const char hashed_id[32], const char *password);
+    void InitWifi();
 };

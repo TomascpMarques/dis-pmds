@@ -17,7 +17,7 @@
 /// @param routing_mode An array receiving network routing behavior.
 DeviceIdentifier::DeviceIdentifier(
     char device_type[3 + 1],
-    char patient_id[8 + 1],
+    String patient_uuid,
     DeviceOperationStates operation_state,
     DeviceRoutingMode routing_modes)
 {
@@ -32,125 +32,57 @@ DeviceIdentifier::DeviceIdentifier(
     char hashed_id[32 + 1] = "";
     char *device_id = RandomCharSequenceLen8();
 
-    strncpy(this->device_id, device_id, 9);
-    strncpy(this->patient_id, patient_id, 9);
+    this->device_id = device_id;
+    this->patient_id = patient_uuid.c_str();
 
     this->device_state = operation_state;
     this->device_routing_mode = routing_modes;
-
-    /* String state = "";
-    if (operation_state == DeviceOperationStates::good)
-    {
-        state = "good";
-    }
-    else if (operation_state == DeviceOperationStates::malfunctioning)
-    {
-        state = "malf";
-    }
-    else if (operation_state == DeviceOperationStates::warning)
-    {
-        state = "warn";
-    }
-    else if (operation_state == DeviceOperationStates::failure)
-    {
-        state = "fail";
-    }
-    else
-    {
-        Serial.printf("Falha ao atribuir o estado do dispositivo");
-        return;
-    } */
-
-    /* char routing_mode_binary[8 + 1];
-    itoa(routing_modes, routing_mode_binary, 2);
-    routing_mode_binary[8] = '\0'; */
 }
 
 DeviceIdentifier::DeviceIdentifier()
 {
 }
 
-/// @brief Construtor que cria um DeviceWiFiSSID a partir de uma string.
-/// @param hashed_id uma string de caracteres de tamanho 32.
-/* DeviceIdentifier::DeviceIdentifier(String hashed_id)
-{
-    if (!hashed_id.startsWith("DISPMD"))
-    {
-        Serial.printf("Falha ao extrair o prefixo do dispositivo com o SSID fornecido.\n");
-        return;
-    }
-    else if (hashed_id.length() != 32)
-    {
-        Serial.printf("O SSID fornecido é de tamanho ilegal (!= 32).\n");
-        return;
-    }
-
-    // Extract device prefix
-    hashed_id.toCharArray(this->device_prefix, 3 + 1, 3);
-    this->device_prefix[4] = '\0';
-
-    // Extract device_id
-    hashed_id.toCharArray(this->device_id, 8 + 1, 6);
-    this->device_id[8] = '\0';
-
-    // Extract patient_id
-    hashed_id.toCharArray(this->patient_id, 8 + 1, 8 + 7);
-    this->patient_id[8] = '\0';
-
-    // Full hashed_id string
-    // hashed_id.toCharArray(this->patient_id, 32 + 1, 0);
-
-    // Match device state
-    String device_state = hashed_id.substring(24, 28);
-    if (device_state.equals("good"))
-    {
-        this->device_state = DeviceOperationStates::good;
-    }
-    else if (device_state.equals("malf"))
-    {
-        this->device_state = DeviceOperationStates::malfunctioning;
-    }
-    else if (device_state.equals("fail"))
-    {
-        this->device_state = DeviceOperationStates::failure;
-    }
-    else if (device_state.equals("warn"))
-    {
-        this->device_state = DeviceOperationStates::warning;
-    }
-    else
-    {
-        Serial.printf("Falha ao extrair o estado do dispositivo: <%s>\n", device_state);
-        return;
-    }
-
-    // Match device routing setup
-    char routing_mode[3] = {0, 0, 0};
-    hashed_id.substring(29, 32).toCharArray(routing_mode, 4);
-
-    for (int i = 0; i < 3; ++i)
-        if (!isDigit(routing_mode[i]))
-        {
-            Serial.printf("Falha ao extrair modo de routing.\n");
-            return;
-        }
-
-    uint8_t mode = (uint8_t)strtol(routing_mode, NULL, 2);
-    this->device_routing_mode = mode;
-} */
-
 /// @brief Devolve o id da máquina
 /// @return const char*
 const char *DeviceIdentifier::GetDeviceID() const
 {
-    return this->device_id;
+    return this->device_id.c_str();
 }
 
 /// @brief Devolve o id do paciente que o dispositivo está associado
 /// @return const char*
 const char *DeviceIdentifier::GetPatientID() const
 {
-    return this->patient_id;
+    return this->patient_id.c_str();
+}
+
+const char *DeviceIdentifier::GetDeviceState() const
+{
+    switch (this->device_state)
+    {
+    case DeviceOperationStates::good:
+        return "good";
+    case DeviceOperationStates::failure:
+        return "failure";
+    case DeviceOperationStates::malfunctioning:
+        return "malfunctioning";
+    case DeviceOperationStates::warning:
+        return "warning";
+    }
+}
+
+const char *DeviceIdentifier::GetRoutingMode() const
+{
+    switch (this->device_routing_mode)
+    {
+    case DeviceRoutingModes::informs:
+        return "informs";
+    case DeviceRoutingModes::receives:
+        return "receives";
+    case DeviceRoutingModes::transmits:
+        return "transmits";
+    }
 }
 
 /// @brief Devolve o prefixo do dispositivo incluido no ID
@@ -182,6 +114,11 @@ void DeviceIdentifier::SetAESKey(const byte key[16])
 void DeviceIdentifier::SetAESInstance(AES128_ESP *aes128)
 {
     this->aes128 = aes128;
+}
+
+void DeviceIdentifier::SetApPassword(char *password)
+{
+    this->apPassword = password;
 }
 
 const char *DeviceIdentifier::GenerateAESSSID()
@@ -236,10 +173,12 @@ const char *DeviceIdentifier::DecryptSomeSSID(const byte cypher[16])
     return decrypted_text_utf8.c_str();
 }
 
-void DeviceIdentifier::InitWifi(const char hashed_id[32], const char *password)
+void DeviceIdentifier::InitWifi()
 {
+    const char *ssid = this->GetSSIDAES();
+
     WiFi.mode(WIFI_AP_STA);
-    WiFi.softAP(hashed_id, strcmp(password, "") ? NULL : password);
+    WiFi.softAP(ssid, strcmp(this->apPassword, "") ? NULL : this->apPassword);
 }
 
 /// @brief Devolve um array com os modos de routing incluidos na mascara
