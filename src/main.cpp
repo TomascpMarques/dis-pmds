@@ -19,7 +19,14 @@ DeviceRoutingMode permissions = DeviceRoutingModes::receives + DeviceRoutingMode
 
 AES128_ESP aes128;
 MainBLEServer ble_server;
-int i = 0;
+
+const byte key[16] = {
+    0x2b, 0x7e, 0x15, 0x16,
+    0x28, 0xae, 0xd2, 0xa6,
+    0xab, 0xf7, 0x15, 0x88,
+    0x09, 0xcf, 0x4f, 0x3c
+    // -------------------
+};
 
 void setup()
 {
@@ -27,55 +34,70 @@ void setup()
 
   randomSeed(999999999);
 
+  // Wait for serial availability
   while (!Serial)
     ;
 
-  BLEDevice::init("ESP32");
-  ble_server = MainBLEServer(
-      new CharacteristicCallbacks(),
-      new ServerCallbacks()
-      // --------
-  );
-  ble_server.StartAdvertising();
-
-  const byte key[16] = {
-      0x2b, 0x7e, 0x15, 0x16,
-      0x28, 0xae, 0xd2, 0xa6,
-      0xab, 0xf7, 0x15, 0x88,
-      0x09, 0xcf, 0x4f, 0x3c
-      // -------------------
-  };
-
-  DeviceIdentifier did = DeviceIdentifier(
+  DeviceIdentifier *did = new DeviceIdentifier(
       "PMD",
       RandomCharSequenceLen8(),
       DeviceOperationStates::good,
       permissions
-      // ------------------------
+      // -------------------------
   );
 
-  did.SetAESKey(key);
-  did.SetAESInstance(&aes128);
+  did->SetAESKey(key);
+  did->SetAESInstance(&aes128);
+  did->GenerateAESSSID();
 
-  const char *x = did.GenerateAESSSID();
+  // Empty for no password
+  did->SetApPassword("");
 
-  Serial.printf("SSID: %s", x);
+  String bleId = "PMD";
+  bleId.concat(did->GetSSIDAES());
+  bleId = bleId.substring(0, 20);
 
-  const char *aesSSID = x;
+  BLEDevice::init(bleId.c_str());
+  ble_server = MainBLEServer(new ServerCallbacks());
 
-  did.InitWifi(aesSSID, "");
+  // Adicionar os callbacks à caracteristica de id do dispositivo -----------------
+  BLECharacteristicCallbacks *pDeviceIdentifierCharacteristicCallbacks =
+      new DidCallbacks(did, &ble_server);
+
+  /* int err = ble_server.SetCharacteristicCallbacks(
+      MainBLECharacteristics::PatientID,
+      patientIdCharacteristicCallbacks
+  ); */
+
+  MainBLECharacteristics caracteristicas[4] = {
+      MainBLECharacteristics::PatientID,
+      MainBLECharacteristics::DeviceID,
+      MainBLECharacteristics::DeviceState,
+      MainBLECharacteristics::RoutingMode
+      // ---------------------------------
+  };
+
+  int err = ble_server.SetCharacteristicsCallbacks(
+      pDeviceIdentifierCharacteristicCallbacks,
+      caracteristicas,
+      4
+      //
+  );
+  if (err != 0)
+  {
+    Serial.printf("FATAL: FAILED TO ADD CALLBACKS TO DEVICE ID CHARACTERISTICS\n");
+    exit(-1);
+  }
+  delay(100);
+  // ------------------------------------------------------------------------------
+
+  ble_server.StartIdService();
+  delay(100);
+  ble_server.StartAdvertising(bleId);
+
+  did->InitWifi();
 }
 
 void loop()
 {
-  /* ScanPmdDevices(); */
-  /*   BLECharacteristic *pIdentification = ble_server.GetCharacteristic(MainBLECharacteristics::Identification);
-
-    char *value = "";
-    sprintf(value, "TEST %d", i++);
-
-    pIdentification->setValue(String(value).c_str());
-    pIdentification->notify(); */
-
-  delay(5000);
 }

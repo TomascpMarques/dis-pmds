@@ -1,89 +1,232 @@
 #include <DISBLE.h>
 
-MainBLEServer::MainBLEServer() {}
+MainBLEServer::MainBLEServer()
+{
+}
 
 MainBLEServer::MainBLEServer(
-    BLECharacteristicCallbacks *idCharacteristicsCallbacks,
-    BLEServerCallbacks *pServerCallbacks
-    // ------
+    BLEServerCallbacks *pBleServerCallbacks
+    // BLECharacteristicCallbacks *pDeviceDataCallback
+    // ---------------------------------------------
 )
 {
-    // Criação dos UUID do Serviço de identificação e as sua caracteristica
-    this->identificationServiceUUID.setVariant4Mode();
-    this->identificationServiceUUID.generate();
-
-    this->identificationCharacteristicUUID.setVariant4Mode();
-    this->identificationCharacteristicUUID.generate();
-    // -----------------------------------------------
-
     // Criação do servidor BLE
     this->pServer = BLEDevice::createServer();
+    this->pServer->setCallbacks(pBleServerCallbacks);
 
-    // Criação do serviço BLE de identificação
-    this->pIdentificationService =
+    this->uuidGen.setRandomMode();
+    this->uuidGen.setVariant4Mode();
+
+    // Criação dos UUID do Serviço de identificação e as sua caracteristica
+    this->uuidGen.generate();
+    strncpy(this->idServiceUUID, this->uuidGen.toCharArray(), 37);
+
+    this->uuidGen.generate();
+    strncpy(this->deviceIdCharacteristicUUID, this->uuidGen.toCharArray(), 37);
+
+    this->uuidGen.generate();
+    strncpy(this->patientIDCharacteristicUUID, this->uuidGen.toCharArray(), 37);
+
+    this->uuidGen.generate();
+    strncpy(this->deviceStateCharacteristicUUID, this->uuidGen.toCharArray(), 37);
+
+    this->uuidGen.generate();
+    strncpy(this->deviceRoutingCharacteristicUUID, this->uuidGen.toCharArray(), 37);
+    // -----------------------------------------------
+
+    // Criação da identificação do serviço BLE
+    this->pIdService =
         this->pServer->createService(
-            this->identificationServiceUUID.toCharArray()
+            this->idServiceUUID
             // -----------------------------------------
         );
 
     // Criação da caracteristica do serviço de identificação.
-    uint32_t identificationCharacteristics =
+    uint32_t generalReadNotifyCharacteristics =
         BLECharacteristic::PROPERTY_READ |
         BLECharacteristic::PROPERTY_NOTIFY;
 
-    this->pIdentificationCharacteristic =
-        this->pIdentificationService->createCharacteristic(
-            this->identificationCharacteristicUUID.toCharArray(),
-            identificationCharacteristics
-            // --------------------------
+    this->pDeviceIdCharacteristic =
+        this->pIdService->createCharacteristic(
+            this->deviceIdCharacteristicUUID,
+            generalReadNotifyCharacteristics
+            // --------------------------------------
         );
 
-    // Define callbacks da caracteristica de identificação
-    this->pIdentificationCharacteristic->setCallbacks(idCharacteristicsCallbacks);
+    this->pPatientIDCharacteristic =
+        this->pIdService->createCharacteristic(
+            this->patientIDCharacteristicUUID,
+            generalReadNotifyCharacteristics
+            // --------------------------------------
+        );
 
-    // Descriptor da caracteristica de identificação
-    BLE2902 descriptor = BLE2902();
-    descriptor.setValue("informação de identificação do dispositivo");
+    this->pDeviceRoutingCharacteristic =
+        this->pIdService->createCharacteristic(
+            this->deviceRoutingCharacteristicUUID,
+            generalReadNotifyCharacteristics
+            // --------------------------------------
+        );
 
-    this->pIdentificationCharacteristic->addDescriptor(&descriptor);
+    this->pDeviceStateCharacteristic =
+        this->pIdService->createCharacteristic(
+            this->deviceStateCharacteristicUUID,
+            generalReadNotifyCharacteristics
+            // --------------------------------------
+        );
 
-    this->pIdentificationService->start();
+    // Descrição das caracteristicas relacionadas com o DID
+    BLE2902 *deviceIdDescriptor = new BLE2902();
+    deviceIdDescriptor->setValue("Device ID");
+    this->pDeviceIdCharacteristic->addDescriptor(deviceIdDescriptor);
+
+    BLE2902 *patientIdDescriptor = new BLE2902();
+    patientIdDescriptor->setValue("Patient ID");
+    this->pPatientIDCharacteristic->addDescriptor(patientIdDescriptor);
+
+    BLE2902 *deviceRoutingDescriptor = new BLE2902();
+    deviceRoutingDescriptor->setValue("Routing Mode");
+    this->pDeviceRoutingCharacteristic->addDescriptor(deviceRoutingDescriptor);
+
+    BLE2902 *deviceStateDescriptor = new BLE2902();
+    deviceStateDescriptor->setValue("Device State");
+    this->pDeviceStateCharacteristic->addDescriptor(deviceStateDescriptor);
+}
+
+int MainBLEServer::SetCharacteristicCallbacks(MainBLECharacteristics characteristic, BLECharacteristicCallbacks *callbacksClass)
+{
+    BLECharacteristic *serviceCharacteristic = this->GetCharacteristic(characteristic);
+    if (characteristic == NULL)
+    {
+        Serial.printf("FAILED to set callbacks to characteristic: %s\n", characteristic);
+        return -1;
+    }
+
+    Serial.printf("SETTING CALLBACKS\n");
+
+    serviceCharacteristic->setCallbacks(callbacksClass);
+    return 0;
+}
+
+int MainBLEServer::SetCharacteristicsCallbacks(BLECharacteristicCallbacks *callbacksClass, MainBLECharacteristics characteristic[], int charCount)
+{
+    for (int i = 0; i < charCount; ++i)
+    {
+        // this->SetCharacteristicCallbacks(characteristic[i], callbacksClass);
+        BLECharacteristic *serviceCharacteristic = this->GetCharacteristic(characteristic[i]);
+        if (characteristic == NULL)
+        {
+            Serial.printf("FAILED to set callbacks to characteristic: %s\n", characteristic);
+            return -1;
+        }
+
+        Serial.printf("SETTING CALLBACKS\n");
+
+        serviceCharacteristic->setCallbacks(callbacksClass);
+    };
+
+    return 0;
+}
+
+void MainBLEServer::StartIdService()
+{
+    this->pIdService->start();
 }
 
 void MainBLEServer::StartIdentificationService()
 {
-    this->pIdentificationService->start();
+    this->pIdService->start();
 }
 
 void MainBLEServer::StopIdentificationService()
 {
-    this->pIdentificationService->stop();
+    this->pIdService->stop();
 }
 
-void MainBLEServer::StartAdvertising()
+void MainBLEServer::StartAdvertising(String advertName)
 {
     BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
 
     // Registar advertising para o serviço de identificação
-    pAdvertising->addServiceUUID(
-        this->identificationServiceUUID.toCharArray());
+    pAdvertising->addServiceUUID(this->idServiceUUID);
 
-    //
-    pAdvertising->setScanResponse(false);
+    BLEAdvertisementData advertData = BLEAdvertisementData();
+    advertData.setName(advertName.c_str());
+    advertData.setAppearance(ESP_BLE_APPEARANCE_GENERIC_PULSE_OXIMETER);
+    advertData.setShortName("DIS-PMD");
+
+    pAdvertising->setScanResponseData(advertData);
+
+    pAdvertising->setScanResponse(true);
     pAdvertising->setMinPreferred(0x0);
 
     BLEDevice::startAdvertising();
+}
+
+int MainBLEServer::SetCharacteristicValue(MainBLECharacteristics characteristic, String value, bool notify)
+{
+    BLECharacteristic *serviceCharacteristic = this->GetCharacteristic(characteristic);
+    if (characteristic == NULL)
+    {
+        Serial.printf("FAILED to set characteristic value: %s\n", characteristic);
+        return -1;
+    }
+
+    serviceCharacteristic->setValue(value.c_str());
+    if (notify)
+        serviceCharacteristic->notify();
+
+    return 0;
+}
+
+BLECharacteristic *MainBLEServer::MapUUIDToCharacteristic(const char *uuid)
+{
+    if (strcmp(uuid, this->deviceIdCharacteristicUUID))
+    {
+        return this->pDeviceIdCharacteristic;
+    }
+    else if (strcmp(uuid, this->patientIDCharacteristicUUID))
+    {
+        return this->pPatientIDCharacteristic;
+    }
+    else if (strcmp(uuid, this->deviceRoutingCharacteristicUUID))
+    {
+        return this->pDeviceRoutingCharacteristic;
+    }
+    else if (strcmp(uuid, this->deviceStateCharacteristicUUID))
+    {
+        return this->pDeviceRoutingCharacteristic;
+    }
+    else
+    {
+        return NULL;
+    }
 }
 
 BLECharacteristic *MainBLEServer::GetCharacteristic(MainBLECharacteristics characteristic) const
 {
     switch (characteristic)
     {
-    case MainBLECharacteristics::Identification:
-        return this->pIdentificationCharacteristic;
+    case MainBLECharacteristics::DeviceID:
+        return this->pDeviceIdCharacteristic;
+
+    case MainBLECharacteristics::PatientID:
+        return this->pPatientIDCharacteristic;
+
+    case MainBLECharacteristics::RoutingMode:
+        return this->pDeviceRoutingCharacteristic;
+
+    case MainBLECharacteristics::DeviceState:
+        return this->pDeviceStateCharacteristic;
+
     default:
-        return nullptr;
+        return NULL;
     }
+}
+
+BLEUUID MainBLEServer::GetCharacteristicUUID(MainBLECharacteristics characteristic) const
+{
+    BLEUUID uuid = this->GetCharacteristic(characteristic)->getUUID();
+    return uuid;
 }
 
 /*
@@ -92,27 +235,71 @@ BLECharacteristic *MainBLEServer::GetCharacteristic(MainBLECharacteristics chara
 =====================================================
 */
 
-class CharacteristicCallbacks : public BLECharacteristicCallbacks
-{
-    void onRead(BLECharacteristic *pCharacteristic)
-    {
-        std::string value = pCharacteristic->getValue();
-        Serial.printf("BLE - VALUE READ: %s\n", value);
-    }
-    void onNotify(BLECharacteristic *pCharacteristic)
-    {
-        Serial.printf("BLE NOTIFY VALUE\n");
-    }
-};
+/*
+----------------------------------
+        Patient Callbacks
+----------------------------------
+*/
 
-class ServerCallbacks : public BLEServerCallbacks
+void DidCallbacks::onRead(BLECharacteristic *pCharacteristic)
 {
-    void onConnect(BLEServer *pServer)
+    BLEUUID charUuid = pCharacteristic->getUUID();
+
+    // UUID das caracteristicas que vão ser tratadas por este handler
+    BLEUUID IdUUID = this->pBleServer->GetCharacteristicUUID(MainBLECharacteristics::DeviceID);
+    BLEUUID patientIdUUID = this->pBleServer->GetCharacteristicUUID(MainBLECharacteristics::PatientID);
+    BLEUUID deviceStateUUID = this->pBleServer->GetCharacteristicUUID(MainBLECharacteristics::DeviceState);
+    BLEUUID deviceRoutingUUID = this->pBleServer->GetCharacteristicUUID(MainBLECharacteristics::RoutingMode);
+
+    String value = "EMPTY";
+    if (charUuid.equals(IdUUID))
     {
-        // Pass
+        value = this->pDeviceIdentifier->GetDeviceID();
     }
-    void onDisconnect(BLEServer *pServer)
+    else if (charUuid.equals(patientIdUUID))
     {
-        pServer->startAdvertising();
+        value = this->pDeviceIdentifier->GetPatientID();
     }
-};
+    else if (charUuid.equals(deviceStateUUID))
+    {
+        value = this->pDeviceIdentifier->GetDeviceState();
+    }
+    else if (charUuid.equals(deviceRoutingUUID))
+    {
+        value = this->pDeviceIdentifier->GetRoutingMode();
+    }
+    else
+    {
+        Serial.printf("ERRO: Caracteristica não conhecida!!!\n");
+    }
+
+    pCharacteristic->setValue(value.c_str());
+    pCharacteristic->notify();
+}
+void DidCallbacks::onNotify(BLECharacteristic *pCharacteristic)
+{
+    Serial.printf("BLE NOTIFY VALUE\n");
+}
+
+/// @brief Constructs the callbacks class for the patient characteristic
+/// @param pDeviceIdentifier Class holding device information
+DidCallbacks::DidCallbacks(DeviceIdentifier *pDeviceIdentifier, MainBLEServer *pBleServer)
+{
+    this->pBleServer = pBleServer;
+    this->pDeviceIdentifier = pDeviceIdentifier;
+}
+
+/*
+----------------------------------
+        Server Callbacks
+----------------------------------
+*/
+
+void ServerCallbacks::onConnect(BLEServer *pServer)
+{
+    // Pass
+}
+void ServerCallbacks::onDisconnect(BLEServer *pServer)
+{
+    pServer->startAdvertising();
+}

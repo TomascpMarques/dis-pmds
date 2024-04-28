@@ -4,41 +4,43 @@
 #include <BLEDevice.h>
 #include <BLEServer.h>
 #include <BLEUtils.h>
+#include <BLEUUID.h>
 #include <BLE2902.h>
-#include <UUID.h>
 /* ---- BLE Libraries ---- */
 
-// #include <ESPRandom.h>
-
-class CharacteristicCallbacks : public BLECharacteristicCallbacks
-{
-    void onRead(BLECharacteristic *pCharacteristic);
-    void onNotify(BLECharacteristic *pCharacteristic);
-};
-
-class ServerCallbacks : public BLEServerCallbacks
-{
-    void onConnect(BLEServer *pServer);
-    void onDisconnect(BLEServer *pServer);
-};
+#include <UUID.h>
+#include <DIS.h>
 
 enum MainBLECharacteristics
 {
-    Identification = 0,
+    DeviceID = 0,
+    PatientID,
+    DeviceState,
+    RoutingMode,
 };
 
 // Main BLE service - passive identification and data transmission
 class MainBLEServer
 {
+private:
     BLEServer *pServer = NULL;
+    UUID uuidGen;
 
     // BLE device identification service
-    UUID identificationServiceUUID;
-    UUID identificationCharacteristicUUID;
-    BLECharacteristic *pIdentificationCharacteristic = NULL;
-    BLEService *pIdentificationService = NULL;
+    char idServiceUUID[36 + 1];
 
-    int connectedDeviceCount = 0;
+    char deviceIdCharacteristicUUID[36 + 1];
+    char patientIDCharacteristicUUID[36 + 1];
+    char deviceStateCharacteristicUUID[36 + 1];
+    char deviceRoutingCharacteristicUUID[36 + 1];
+
+    BLECharacteristic *pDeviceIdCharacteristic = NULL;
+    BLECharacteristic *pPatientIDCharacteristic = NULL;
+    BLECharacteristic *pDeviceStateCharacteristic = NULL;
+    BLECharacteristic *pDeviceRoutingCharacteristic = NULL;
+
+    BLEService *pIdService = NULL;
+    // --------------------------------------------
 
 public:
     /* ----------------------
@@ -46,17 +48,60 @@ public:
     ------------------------ */
     MainBLEServer();
     MainBLEServer(
-        BLECharacteristicCallbacks *idCharacteristicsCallbacks,
         BLEServerCallbacks *pServerCallbacks
-        // ------
+        // ---------------------------------
     );
+
+    /* ----------------------
+    Setters
+    ------------------------ */
+    int SetCharacteristicCallbacks(MainBLECharacteristics characteristic, BLECharacteristicCallbacks *callbacksClass);
+    int SetCharacteristicsCallbacks(BLECharacteristicCallbacks *callbacksClass, MainBLECharacteristics characteristic[], int charCount);
 
     /* ----------------------
     Behavior
     ------------------------ */
+    void StartIdService();
+
     void StartIdentificationService();
     void StopIdentificationService();
-    void StartAdvertising();
 
+    void StartAdvertising(String advertName);
+
+    int SetCharacteristicValue(MainBLECharacteristics characteristic, String value, bool notify);
+
+    BLECharacteristic *MapUUIDToCharacteristic(const char *uuid);
     BLECharacteristic *GetCharacteristic(MainBLECharacteristics characteristic) const;
+    BLEUUID GetCharacteristicUUID(MainBLECharacteristics characteristic) const;
+};
+
+/*
+----------------------------------
+    DeviceIdentifier Callbacks
+----------------------------------
+*/
+
+class DidCallbacks : public BLECharacteristicCallbacks
+{
+    // Other class implementations
+    void onRead(BLECharacteristic *pCharacteristic);
+    void onNotify(BLECharacteristic *pCharacteristic);
+
+public:
+    MainBLEServer *pBleServer;
+    DeviceIdentifier *pDeviceIdentifier;
+
+    DidCallbacks(DeviceIdentifier *pDeviceIdentifier, MainBLEServer *pBleServer);
+};
+
+/*
+----------------------------------
+        Server Callbacks
+----------------------------------
+*/
+
+class ServerCallbacks : public BLEServerCallbacks
+{
+    void onConnect(BLEServer *pServer);
+    void onDisconnect(BLEServer *pServer);
 };
