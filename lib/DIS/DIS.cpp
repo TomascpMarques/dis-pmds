@@ -92,7 +92,7 @@ const char *DeviceIdentifier::GetDevicePrefix() const
     return this->device_prefix;
 }
 
-const char *DeviceIdentifier::GetSSIDAES() const
+const char *DeviceIdentifier::GetSSID() const
 {
     static String crypt = "";
     for (int i = 0; i < 16; i++)
@@ -116,12 +116,12 @@ void DeviceIdentifier::SetAESInstance(AES128_ESP *aes128)
     this->aes128 = aes128;
 }
 
-void DeviceIdentifier::SetApPassword(char *password)
+void DeviceIdentifier::SetApPassword(const char *password)
 {
     this->apPassword = password;
 }
 
-const char *DeviceIdentifier::GenerateAESSSID()
+const char *DeviceIdentifier::GenerateSSID()
 {
     this->aes128->setKey(this->aesKey, 16);
 
@@ -129,7 +129,6 @@ const char *DeviceIdentifier::GenerateAESSSID()
 
     const char *id = RandomCharSequenceLen12();
     std::string source_text = this->device_prefix;
-    Serial.printf("DEVICE PREFIX: %s \n", device_prefix);
     source_text.append(id);
 
     Serial.printf("SOURCE TEXT: %s\n", source_text.c_str());
@@ -175,7 +174,7 @@ const char *DeviceIdentifier::DecryptSomeSSID(const byte cypher[16])
 
 void DeviceIdentifier::InitWifi()
 {
-    const char *ssid = this->GetSSIDAES();
+    const char *ssid = this->GetSSID();
 
     WiFi.mode(WIFI_AP_STA);
     WiFi.softAP(ssid, strcmp(this->apPassword, "") ? NULL : this->apPassword);

@@ -31,11 +31,12 @@ typedef uint8_t DeviceRoutingMode;
 
 class DeviceIdentifier
 {
+
 private:
     // 16 byte - 128 bit AES key
     byte aesKey[16];
     byte aesSSID[16];
-    char *apPassword;
+    const char *apPassword;
     AES128_ESP *aes128;
 
     String device_id;
@@ -65,19 +66,19 @@ public:
     const char *GetDeviceState() const;
     const char *GetRoutingMode() const;
     const char *GetDevicePrefix() const;
-    const char *GetSSIDAES() const;
+    const char *GetSSID() const;
 
     /* ----------------------
     Setter
     ------------------------ */
     void SetAESKey(const byte key[16]);
     void SetAESInstance(AES128_ESP *aes128);
-    void SetApPassword(char *password);
+    void SetApPassword(const char *password);
 
     /* ----------------------
     Behavior
     ------------------------ */
-    const char *GenerateAESSSID();
+    const char *GenerateSSID();
     const char *DecryptSomeSSID(const byte cypher[16]);
 
     void InitWifi();

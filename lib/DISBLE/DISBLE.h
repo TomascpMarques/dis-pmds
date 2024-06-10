@@ -83,7 +83,7 @@ public:
 
 class DidCallbacks : public BLECharacteristicCallbacks
 {
-    // Other class implementations
+    // Class inheritance method implementations
     void onRead(BLECharacteristic *pCharacteristic);
     void onNotify(BLECharacteristic *pCharacteristic);
 

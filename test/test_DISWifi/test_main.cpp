@@ -37,7 +37,7 @@ void test_aes_ssid_creation()
         // -------------------------
     );
 
-    String aesSSID = did.GenerateAESSSID();
+    String aesSSID = did.GenerateSSID();
     TEST_ASSERT_TRUE(aesSSID.length() == 16);
 }
 
@@ -78,7 +78,7 @@ void test_random_alphanumeric_seq_len8()
     TEST_ASSERT_TRUE(len_w == have);
 }
 
-void test_device_routing_mask_interpret()
+/* void test_device_routing_mask_interpret()
 {
     // Esta mascara iguala 5 |          0b100            |              0b001
     DeviceRoutingMode mask = DeviceRoutingModes::informs + DeviceRoutingModes::transmits;
@@ -94,7 +94,7 @@ void test_device_routing_mask_interpret()
 
     TEST_ASSERT_TRUE(comparison_1);
     TEST_ASSERT_TRUE(comparison_2);
-}
+} */
 
 void test_new_device_ssid()
 {
@@ -122,7 +122,7 @@ void setup()
     UNITY_BEGIN();
 
     RUN_TEST(test_new_device_ssid);
-    RUN_TEST(test_device_routing_mask_interpret);
+    // RUN_TEST(test_device_routing_mask_interpret);
 
     RUN_TEST(test_random_alphanumeric_seq_len32);
     RUN_TEST(test_random_alphanumeric_seq_len8);

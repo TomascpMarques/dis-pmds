@@ -3,6 +3,9 @@
 // Wifi connectivity
 #include <WiFi.h>
 
+// Timing
+#include <elapsedMillis.h>
+
 // Random 32 bit numbers and UUIDs
 // #include <ESPRandom.h>
 
@@ -15,10 +18,26 @@
 #include <Crypto.h>
 /* ---- Private Libraries ---- */
 
+class XX : public BLEAdvertisedDeviceCallbacks
+{
+  // Inheritance
+  void onResult(BLEAdvertisedDevice advertisedDevice);
+};
+
+void XX::onResult(BLEAdvertisedDevice advertisedDevice)
+{
+  Serial.printf("FOUND DEVICE: %s %d\n", advertisedDevice.getAddress().toString().c_str(), advertisedDevice.getRSSI());
+}
+
+// ---------------------------------------------------
+
 DeviceRoutingMode permissions = DeviceRoutingModes::receives + DeviceRoutingModes::transmits;
+
+elapsedMillis timerOne;
 
 AES128_ESP aes128;
 MainBLEServer ble_server;
+BLEScan *ble_scanner;
 
 const byte key[16] = {
     0x2b, 0x7e, 0x15, 0x16,
@@ -32,37 +51,42 @@ void setup()
 {
   Serial.begin(115200);
 
-  randomSeed(999999999);
-
   // Wait for serial availability
   while (!Serial)
     ;
 
-  DeviceIdentifier *did = new DeviceIdentifier(
+  DeviceIdentifier *dispIdentifier = new DeviceIdentifier(
       "PMD",
-      RandomCharSequenceLen8(),
+      RandomCharSequenceLen32(),
       DeviceOperationStates::good,
       permissions
       // -------------------------
   );
 
-  did->SetAESKey(key);
-  did->SetAESInstance(&aes128);
-  did->GenerateAESSSID();
+  dispIdentifier->SetAESKey(key);
+  dispIdentifier->SetAESInstance(&aes128);
+  dispIdentifier->GenerateSSID();
 
   // Empty for no password
-  did->SetApPassword("");
+  const char *password = "";
+  dispIdentifier->SetApPassword(password);
 
   String bleId = "PMD";
-  bleId.concat(did->GetSSIDAES());
+  bleId.concat(dispIdentifier->GetSSID());
   bleId = bleId.substring(0, 20);
 
   BLEDevice::init(bleId.c_str());
   ble_server = MainBLEServer(new ServerCallbacks());
 
+  ble_scanner = BLEDevice::getScan();
+  ble_scanner->setAdvertisedDeviceCallbacks(new XX());
+  ble_scanner->setActiveScan(true);
+  ble_scanner->setInterval(1000);
+  ble_scanner->setWindow(50);
+
   // Adicionar os callbacks à caracteristica de id do dispositivo -----------------
   BLECharacteristicCallbacks *pDeviceIdentifierCharacteristicCallbacks =
-      new DidCallbacks(did, &ble_server);
+      new DidCallbacks(dispIdentifier, &ble_server);
 
   /* int err = ble_server.SetCharacteristicCallbacks(
       MainBLECharacteristics::PatientID,
@@ -81,7 +105,7 @@ void setup()
       pDeviceIdentifierCharacteristicCallbacks,
       caracteristicas,
       4
-      //
+      // ----
   );
   if (err != 0)
   {
@@ -95,9 +119,10 @@ void setup()
   delay(100);
   ble_server.StartAdvertising(bleId);
 
-  did->InitWifi();
+  // dispIdentifier->InitWifi();
 }
 
 void loop()
 {
+  BLEScanResults results = ble_scanner->start(5, false);
 }

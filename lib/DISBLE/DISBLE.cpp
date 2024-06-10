@@ -107,9 +107,9 @@ int MainBLEServer::SetCharacteristicCallbacks(MainBLECharacteristics characteris
     return 0;
 }
 
-int MainBLEServer::SetCharacteristicsCallbacks(BLECharacteristicCallbacks *callbacksClass, MainBLECharacteristics characteristic[], int charCount)
+int MainBLEServer::SetCharacteristicsCallbacks(BLECharacteristicCallbacks *callbacksClass, MainBLECharacteristics characteristic[], int characteristicCount)
 {
-    for (int i = 0; i < charCount; ++i)
+    for (int i = 0; i < characteristicCount; ++i)
     {
         // this->SetCharacteristicCallbacks(characteristic[i], callbacksClass);
         BLECharacteristic *serviceCharacteristic = this->GetCharacteristic(characteristic[i]);
@@ -119,7 +119,7 @@ int MainBLEServer::SetCharacteristicsCallbacks(BLECharacteristicCallbacks *callb
             return -1;
         }
 
-        Serial.printf("SETTING CALLBACKS\n");
+        // Serial.printf("SETTING CALLBACKS\n");
 
         serviceCharacteristic->setCallbacks(callbacksClass);
     };
@@ -165,7 +165,8 @@ void MainBLEServer::StartAdvertising(String advertName)
 int MainBLEServer::SetCharacteristicValue(MainBLECharacteristics characteristic, String value, bool notify)
 {
     BLECharacteristic *serviceCharacteristic = this->GetCharacteristic(characteristic);
-    if (characteristic == NULL)
+
+    if (!characteristic)
     {
         Serial.printf("FAILED to set characteristic value: %s\n", characteristic);
         return -1;
