@@ -9,8 +9,10 @@
         "*.svelte": "svelte",
         "*.scala": "scala",
         "*.zig": "zig",
-        "optional": "cpp"
+        "optional": "cpp",
+        "string_view": "cpp"
     },
     "cmake.sourceDirectory": "/home/tomasmarques/Workspace/PlatformIO/projects/S3 tests/.pio/libdeps/esp32-s3-devkitm-1/Unity",
-    "java.jdt.ls.java.home": "/home/tomasmarques/.sdkman/candidates/java/17.0.0-tem"
+    "java.jdt.ls.java.home": "/home/tomasmarques/.sdkman/candidates/java/17.0.0-tem",
+    "C_Cpp.errorSquiggles": "enabled"
 }

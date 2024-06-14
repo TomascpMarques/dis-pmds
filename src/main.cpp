@@ -14,9 +14,10 @@
 #include <DIS.h>
 #include <Scanning.h>
 #include <DISBLE.h>
+/* ---- Private Libraries ---- */
+
 #include <AES.h>
 #include <Crypto.h>
-/* ---- Private Libraries ---- */
 
 class XX : public BLEAdvertisedDeviceCallbacks
 {

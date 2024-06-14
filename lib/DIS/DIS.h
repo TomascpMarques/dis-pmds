@@ -6,6 +6,8 @@
 #include <Crypto.h>
 #include <AES.h>
 
+typedef uint8_t byte;
+
 /// @brief Binary representation to be used in MSB
 enum DeviceOperationStates
 {
