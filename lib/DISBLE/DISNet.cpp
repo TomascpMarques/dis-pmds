@@ -82,10 +82,10 @@ String Payload::GetPayload()
     return payload;
 }
 
-Node::Node(char id[32 + 1], BLEAdvertisedDevice *device)
+Node::Node(String id, BLEAdvertisedDevice *deviceId)
 {
-    strcpy(this->id, id);
-    this->deviceId = device->getAddress().toString().c_str();
+    this->id = id;
+    this->deviceId = deviceId->getAddress().toString().c_str();
 }
 
 Node::Node(BLEAdvertisedDevice *device)
@@ -95,11 +95,11 @@ Node::Node(BLEAdvertisedDevice *device)
 
 Node::Node(String deviceId)
 {
-    strcpy(this->id, RandomCharSequenceLen32());
+    this->id = RandomCharSequenceLen32();
     this->deviceId = deviceId;
 }
 
-char *Node::GetId()
+String Node::GetId()
 {
     return id;
 }
@@ -169,4 +169,70 @@ PacketQueue::QueueResult PacketQueue::InsertPacket(Packet *packet)
 
     queue[PACKET_QUEUE_COUNT * offset + i] = packet;
     return QueueResult::SUC_OK;
+}
+
+bool ScalablePacketQueue::__T_PriorityHasPacket(PacketPriority priority)
+{
+    return this->queue[priority];
+}
+
+ScalablePacketQueue::ScalablePacketQueue()
+{
+    this->metaData = ScalablePacketQueue::PacketQueueMeta();
+    *this->queue = {};
+
+    for (int i = 0; i < PacketPriority::__PRIORITY_COUNT; ++i)
+        this->queue[i] = nullptr;
+}
+
+void ScalablePacketQueue::PushPacket(Packet *packet)
+{
+    N *new_node = N::Default();
+    new_node->self = packet;
+
+    if (!this->queue[packet->GetPacketPriority()])
+    {
+        this->queue[packet->GetPacketPriority()] = new_node;
+        this->metaData.IncrementPacketCount(packet->GetPacketPriority());
+        return;
+    }
+
+    N *node = this->queue[packet->GetPacketPriority()];
+    while (node->next)
+        node = node->next;
+
+    new_node->previous = node;
+    node->next = new_node;
+
+    this->metaData.IncrementPacketCount(packet->GetPacketPriority());
+    return;
+}
+
+Packet *ScalablePacketQueue::PopPacket(PacketPriority priority)
+{
+    if (!this->queue[priority])
+        return nullptr;
+
+    N *node = this->queue[priority];
+
+    if (node->next)
+    {
+        this->queue[priority] = node->next;
+        this->queue[priority]->previous = nullptr;
+    }
+    else
+    {
+        this->queue[priority] = nullptr;
+    }
+
+    Packet *p = node->self;
+    free(node);
+
+    this->metaData.IncrementPacketCount(priority);
+    return p;
+}
+
+NetworkNode::NetworkNode()
+{
+    this->packetQueue = new PacketQueue();
 }

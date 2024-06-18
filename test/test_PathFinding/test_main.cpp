@@ -173,19 +173,70 @@ void test_balance_queue()
     TEST_ASSERT_TRUE(queue->queue[9]);
 }
 
+void test_scalable_queue()
+{
+    ScalablePacketQueue *queue = new ScalablePacketQueue();
+    TEST_ASSERT_TRUE(queue);
+
+    Packet *pkt = new Packet(14, "I", PacketPriority::Severe);
+    Packet *pktt = new Packet(14, "II", PacketPriority::Severe);
+    Packet *pkttt = new Packet(14, "III", PacketPriority::High);
+    Packet *pktttt = new Packet(14, "IV", PacketPriority::None);
+
+    TEST_ASSERT_TRUE(queue);
+
+    // --- TEST push into queue START ---
+    TEST_ASSERT_TRUE(!queue->__T_PriorityHasPacket(PacketPriority::Severe));
+    queue->PushPacket(pkt);
+    TEST_ASSERT_TRUE(queue->__T_PriorityHasPacket(PacketPriority::Severe));
+
+    queue->PushPacket(pktt);
+    queue->PushPacket(pkttt);
+    queue->PushPacket(pktttt);
+    // --- TEST push into queue END ---
+
+    // --- TEST pop from queue START ---
+    Packet *p = queue->PopPacket(PacketPriority::Regular);
+    TEST_ASSERT_TRUE(!p);
+
+    p = queue->PopPacket(PacketPriority::Severe);
+    TEST_ASSERT_TRUE(p);
+    TEST_ASSERT_TRUE(String("I").equals(p->GetDestination()));
+
+    p = queue->PopPacket(PacketPriority::Severe);
+    TEST_ASSERT_TRUE(p);
+    TEST_ASSERT_TRUE(String("II").equals(p->GetDestination()));
+
+    p = queue->PopPacket(PacketPriority::Severe);
+    TEST_ASSERT_TRUE(!p);
+
+    p = queue->PopPacket(PacketPriority::High);
+    TEST_ASSERT_TRUE(p);
+    TEST_ASSERT_TRUE(String("III").equals(p->GetDestination()));
+
+    p = queue->PopPacket(PacketPriority::High);
+    TEST_ASSERT_TRUE(!p);
+
+    p = queue->PopPacket(PacketPriority::None);
+    TEST_ASSERT_TRUE(p);
+    TEST_ASSERT_TRUE(String("IV").equals(p->GetDestination()));
+    // --- TEST pop from queue END ---
+}
+
 void setup()
 {
     Serial.begin(115200);
 
     UNITY_BEGIN();
 
-    /* RUN_TEST(test_packet_constructor);
+    RUN_TEST(test_packet_constructor);
     RUN_TEST(test_add_packet_payload);
     RUN_TEST(test_add_node_to_path);
     RUN_TEST(test_get_path_node);
     RUN_TEST(test_payload_class);
-    RUN_TEST(test_packet_queue); */
+    RUN_TEST(test_packet_queue);
     RUN_TEST(test_balance_queue);
+    RUN_TEST(test_scalable_queue);
 
     /*
     CustomClassBase c {1, 2.2, "3.3"};

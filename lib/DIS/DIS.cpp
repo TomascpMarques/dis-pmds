@@ -131,8 +131,6 @@ const char *DeviceIdentifier::GenerateSSID()
     std::string source_text = this->device_prefix;
     source_text.append(id);
 
-    Serial.printf("SOURCE TEXT: %s\n", source_text.c_str());
-
     for (int i = 0; i < 16; ++i)
         source_bytes[i] = (byte)source_text[i];
 

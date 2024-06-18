@@ -13,41 +13,23 @@
 #include <DIS.h>
 /* ---- Private Libs ---- */
 
-class Node
-{
-private:
-    // The address must be unique
-    char id[32 + 1];
-    String deviceId;
-
-public:
-    // ---- Constructors START ----
-    Node(char id[32 + 1], BLEAdvertisedDevice *deviceId);
-    Node(BLEAdvertisedDevice *deviceId);
-    Node(String id);
-    // ---- Constructors END ----
-
-    // ---- Getters START ----
-    char *GetId();
-    String GetDeviceId();
-    // ---- Getters END ----
-};
-
-class NetworkNode
-{
-    // uint8_t CalculateNodeWeight(std::string destination, uint8_t tolerance);
-private:
-public:
-    ~NetworkNode(){};
-    NetworkNode();
-};
-
 struct NodeConnectionInfo_t
 {
     MsgPack::str_t nodeAddress;
     int rssi;
 
     MSGPACK_DEFINE(rssi, nodeAddress);
+};
+
+static const int PACKET_QUEUE_COUNT = 3;
+
+enum PacketPriority
+{
+    Severe,
+    High,
+    Regular,
+    None,
+    __PRIORITY_COUNT
 };
 
 struct Payload
@@ -69,15 +51,6 @@ struct Payload
     // ---- Getters END ----
 
     MSGPACK_DEFINE(length, payload);
-};
-
-enum PacketPriority
-{
-    Severe,
-    High,
-    Regular,
-    None,
-    __PRIORITY_COUNT
 };
 
 class Packet
@@ -110,8 +83,6 @@ public:
     // ---- Behavior END ----
 };
 
-static const int PACKET_QUEUE_COUNT = 3;
-
 class PacketQueue
 {
 public:
@@ -134,5 +105,138 @@ public:
     // ---- Behavior START ----
     PacketQueue::QueueResult InsertPacket(Packet *packet);
     void SortQueueByPriority();
+    // ---- Behavior END ----
+};
+
+struct Node
+{
+    // The address must be unique
+    MsgPack::str_t id;
+    MsgPack::str_t deviceId;
+
+    MSGPACK_DEFINE(id, deviceId);
+
+public:
+    // ---- Constructors START ----
+    Node(String id, BLEAdvertisedDevice *deviceId);
+    Node(BLEAdvertisedDevice *deviceId);
+    Node(String id);
+    // ---- Constructors END ----
+
+    // ---- Getters START ----
+    String GetId();
+    String GetDeviceId();
+    // ---- Getters END ----
+};
+
+class NetworkNode
+{
+    // uint8_t CalculateNodeWeight(std::string destination, uint8_t tolerance);
+private:
+    PacketQueue *packetQueue;
+
+public:
+    ~NetworkNode(){};
+    NetworkNode();
+};
+
+// TODO Think well about this class's utility
+class ScalablePacketQueue
+{
+    // --- Class types START ---
+    enum Result
+    {
+        ERR_PacketPriorityOutOfBounds,
+        ERR_PacketCountFailedInvalidIndex,
+        // ----
+        ERR_FailedAttemptToInsertPacket,
+        SUC_OK,
+    };
+    // --- Class types END ---
+
+private:
+    // --- Inner Class types START ---
+    struct N
+    {
+        Packet *self;
+        N *next;
+        N *previous;
+
+    public:
+        static N *Default()
+        {
+
+            N *node;
+            node = (N *)malloc(sizeof(struct N));
+
+            node->self = nullptr;
+            node->next = nullptr;
+            node->previous = nullptr;
+
+            return node;
+        }
+    };
+    typedef N *Queue[PacketPriority::__PRIORITY_COUNT];
+    struct PacketQueueMeta
+    {
+    private:
+        uint packetCount[PacketPriority::__PRIORITY_COUNT];
+
+    public:
+        /// @brief Cria a meta structure que armazena meta dados necessários para a queue;
+        PacketQueueMeta()
+        {
+            for (int i = 0; i < PacketPriority::__PRIORITY_COUNT; ++i)
+                packetCount[i] = 0;
+        };
+
+        // ---- Getters Start ----
+        uint getPacketCount(PacketPriority priority)
+        {
+            if (priority < 0 or priority > PacketPriority::__PRIORITY_COUNT - 1)
+                return -1;
+
+            return this->packetCount[priority];
+        };
+        // ---- Getters END ----
+
+        ScalablePacketQueue::Result IncrementPacketCount(PacketPriority packetType)
+        {
+            if (packetType < 0 or packetType > PacketPriority::__PRIORITY_COUNT - 1)
+                return ScalablePacketQueue::ERR_PacketPriorityOutOfBounds;
+
+            this->packetCount[packetType] += 1;
+            return ScalablePacketQueue::SUC_OK;
+        };
+
+        ScalablePacketQueue::Result DecrementPacketCount(PacketPriority packetType)
+        {
+            if (packetType < 0 or packetType > PacketPriority::__PRIORITY_COUNT - 1)
+                return ScalablePacketQueue::ERR_PacketPriorityOutOfBounds;
+
+            this->packetCount[packetType] -= 1;
+            return ScalablePacketQueue::SUC_OK;
+        };
+    };
+    // --- Inner Class types END ---
+
+    // Class data members;
+    Queue queue;
+    PacketQueueMeta metaData;
+
+public:
+    // TESTING METHODS
+    bool __T_PriorityHasPacket(PacketPriority);
+
+    // Constructors
+    ScalablePacketQueue();
+
+    // Destructor
+    // TODO implement this method
+    // ~ScalablePacketQueue();
+
+    // ---- Behavior START ----
+    void PushPacket(Packet *);
+    Packet *PopPacket(PacketPriority);
     // ---- Behavior END ----
 };

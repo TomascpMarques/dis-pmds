@@ -10,6 +10,10 @@ MainBLEServer::MainBLEServer(
     // ---------------------------------------------
 )
 {
+    // Criação do cliente BLE
+    this->pClient = BLEDevice::createClient();
+    // this->pClient->setCallbacks(pBleServerCallbacks);
+
     // Criação do servidor BLE
     this->pServer = BLEDevice::createServer();
     this->pServer->setCallbacks(pBleServerCallbacks);
