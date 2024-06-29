@@ -37,9 +37,9 @@ struct Payload
     MsgPack::str_t payload;
     uint length;
 
-    ~Payload(){};
+    ~Payload() {};
     Payload(String content);
-    Payload() : payload(""), length(0){};
+    Payload() : payload(""), length(0) {};
 
     // ---- Setters START ----
     int SetPayload(String content);
@@ -69,7 +69,7 @@ public:
 
     // ---- Constructor ----
     Packet(uint8_t ttl, char destination[36 + 1], PacketPriority priority);
-    Packet() : ttl(14), priority(PacketPriority::Regular), destination("emtpy"), id("empty"){};
+    Packet() : ttl(14), priority(PacketPriority::Regular), destination("emtpy"), id("empty") {};
 
     // ---- Getters START ----
     const char *GetDestination();
@@ -136,11 +136,10 @@ private:
     PacketQueue *packetQueue;
 
 public:
-    ~NetworkNode(){};
+    ~NetworkNode() {};
     NetworkNode();
 };
 
-// TODO Think well about this class's utility
 class ScalablePacketQueue
 {
     // --- Class types START ---
@@ -165,7 +164,6 @@ private:
     public:
         static N *Default()
         {
-
             N *node;
             node = (N *)malloc(sizeof(struct N));
 
@@ -239,4 +237,73 @@ public:
     void PushPacket(Packet *);
     Packet *PopPacket(PacketPriority);
     // ---- Behavior END ----
+};
+
+class BLENetworkNode
+{
+private:
+    BLEClient *pClient = nullptr;
+    BLEServer *pServerReference = nullptr;
+    BLEScan *pBleScanner = nullptr;
+
+    // BLEAdvertise callbacks
+    BLEAdvertisedDeviceCallbacks *pAdvertisedDeviceCallbacks;
+
+    // BLE device network communication service
+    uint32_t comsServiceRxCharacteristics =
+        BLECharacteristic::PROPERTY_READ |
+        BLECharacteristic::PROPERTY_NOTIFY;
+
+    uint32_t comsServiceTxCharacteristics =
+        BLECharacteristic::PROPERTY_WRITE |
+        BLECharacteristic::PROPERTY_NOTIFY;
+
+    char communicationServiceUUID[36 + 1] = "2b9eba18-e6ed-4757-9c7a-fd1dbe693a38";
+
+    char tx_CharacteristicUUID[36 + 1] = "2b9eba18-e6ed-4757-9c7a-fd1dbe693a40";
+    char rx_CharacteristicUUID[36 + 1] = "2b9eba18-e6ed-4757-9c7a-fd1dbe693a41";
+
+    BLECharacteristic *pTXCharacteristic = nullptr;
+    BLECharacteristic *pRXCharacteristic = nullptr;
+
+    BLEService *pCommunicationService = nullptr;
+    // Node *node = nullptr;
+
+public:
+    typedef enum ServiceDenomination
+    {
+        Tx,
+        Rx
+    };
+
+    /* ----------------------
+    Constructors
+    ------------------------ */
+    BLENetworkNode(BLEServer * /* , Node * */);
+
+    /* ----------------------
+    Setters
+    ------------------------ */
+    void SetAdvertisedDeviceCallbacks(BLEAdvertisedDeviceCallbacks *);
+
+    /* ----------------------
+    Getters
+    ------------------------ */
+    BLEService *GetCommunicationBLEService()
+    {
+        return this->pCommunicationService;
+    }
+
+    uint32_t GetComServiceCallbacks(ServiceDenomination service)
+    {
+        switch (service)
+        {
+        case ServiceDenomination::Tx:
+            return this->comsServiceTxCharacteristics;
+        case ServiceDenomination::Rx:
+            return this->comsServiceRxCharacteristics;
+        default:
+            return 0;
+        }
+    }
 };

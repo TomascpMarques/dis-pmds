@@ -236,3 +236,51 @@ NetworkNode::NetworkNode()
 {
     this->packetQueue = new PacketQueue();
 }
+
+BLENetworkNode::BLENetworkNode(BLEServer *s /* , Node *n */)
+{
+    // this->node = n;
+
+    // BLE client and server registration / scanner referencing
+    this->pClient = BLEDevice::createClient();
+    this->pServerReference = s;
+    this->pBleScanner = BLEDevice::getScan();
+
+    // Criação da identificação do serviço de comunicação BLE
+    this->pCommunicationService =
+        this->pServerReference->createService(
+            this->communicationServiceUUID
+            // ---
+        );
+
+    // Criação da caracteristica do serviço de comunicação.
+    uint32_t comsServiceRxCharacteristics =
+        BLECharacteristic::PROPERTY_READ |
+        BLECharacteristic::PROPERTY_NOTIFY;
+
+    // Criação da caracteristica de receção de informação.
+    this->pRXCharacteristic =
+        this->pCommunicationService->createCharacteristic(
+            this->rx_CharacteristicUUID,
+            comsServiceRxCharacteristics
+            // --------------------------------------
+        );
+
+    // Criação da caracteristica do serviço de comunicação.
+    uint32_t comsServiceTxCharacteristics =
+        BLECharacteristic::PROPERTY_WRITE |
+        BLECharacteristic::PROPERTY_NOTIFY;
+
+    // Criação da caracteristica de receção de informação.
+    this->pRXCharacteristic =
+        this->pCommunicationService->createCharacteristic(
+            this->tx_CharacteristicUUID,
+            comsServiceTxCharacteristics
+            // --------------------------------------
+        );
+}
+
+void BLENetworkNode::SetAdvertisedDeviceCallbacks(BLEAdvertisedDeviceCallbacks *pCallbacks)
+{
+    this->pAdvertisedDeviceCallbacks = pCallbacks;
+}

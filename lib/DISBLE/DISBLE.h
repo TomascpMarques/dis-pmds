@@ -28,7 +28,7 @@ private:
     UUID uuidGen;
 
     // BLE device identification service
-    char idServiceUUID[36 + 1];
+    char mainServiceUUID[36 + 1] = "3b98eff8-b21d-4958-88bc-aca8688f1bb9";
 
     char deviceIdCharacteristicUUID[36 + 1];
     char patientIDCharacteristicUUID[36 + 1];
@@ -54,6 +54,18 @@ public:
     );
 
     /* ----------------------
+    Getters
+    ------------------------ */
+    BLEServer *GetBleServerRef()
+    {
+        return this->pServer;
+    }
+    BLEClient *GetBleClientRef()
+    {
+        return this->pClient;
+    }
+
+    /* ----------------------
     Setters
     ------------------------ */
     int SetCharacteristicCallbacks(MainBLECharacteristics characteristic, BLECharacteristicCallbacks *callbacksClass);
@@ -74,6 +86,8 @@ public:
     BLECharacteristic *MapUUIDToCharacteristic(const char *uuid);
     BLECharacteristic *GetCharacteristic(MainBLECharacteristics characteristic) const;
     BLEUUID GetCharacteristicUUID(MainBLECharacteristics characteristic) const;
+
+    void RegisterExtensionService(BLEService *);
 };
 
 /*

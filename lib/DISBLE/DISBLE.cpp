@@ -22,8 +22,8 @@ MainBLEServer::MainBLEServer(
     this->uuidGen.setVariant4Mode();
 
     // Criação dos UUID do Serviço de identificação e as sua caracteristica
-    this->uuidGen.generate();
-    strncpy(this->idServiceUUID, this->uuidGen.toCharArray(), 37);
+    // this->uuidGen.generate();
+    // strncpy(this->MainServiceUUID, this->uuidGen.toCharArray(), 37);
 
     this->uuidGen.generate();
     strncpy(this->deviceIdCharacteristicUUID, this->uuidGen.toCharArray(), 37);
@@ -41,7 +41,7 @@ MainBLEServer::MainBLEServer(
     // Criação da identificação do serviço BLE
     this->pIdService =
         this->pServer->createService(
-            this->idServiceUUID
+            this->mainServiceUUID
             // -----------------------------------------
         );
 
@@ -151,7 +151,7 @@ void MainBLEServer::StartAdvertising(String advertName)
     BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
 
     // Registar advertising para o serviço de identificação
-    pAdvertising->addServiceUUID(this->idServiceUUID);
+    pAdvertising->addServiceUUID(this->mainServiceUUID);
 
     BLEAdvertisementData advertData = BLEAdvertisementData();
     advertData.setName(advertName.c_str());
@@ -232,6 +232,14 @@ BLEUUID MainBLEServer::GetCharacteristicUUID(MainBLECharacteristics characterist
 {
     BLEUUID uuid = this->GetCharacteristic(characteristic)->getUUID();
     return uuid;
+}
+
+void MainBLEServer::RegisterExtensionService(BLEService *)
+{
+    this->pServer->createService(
+        this->mainServiceUUID
+        // -----------------------------------------
+    );
 }
 
 /*
